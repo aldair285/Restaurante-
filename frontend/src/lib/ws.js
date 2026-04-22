@@ -12,17 +12,24 @@ export function useOrdersWS(handler) {
       const ws = new WebSocket(wsUrl());
       ref.current = ws;
       ws.onmessage = (e) => {
-        try { handler(JSON.parse(e.data)); } catch { /* ignore */ }
+        try { handler(JSON.parse(e.data)); } catch (err) { console.error("WS payload inválido:", err); }
       };
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         if (stop) return;
         retry = Math.min(retry + 1, 6);
+        console.warn(`WS cerrado (code=${ev.code}), reintentando en ${500 * retry}ms`);
         setTimeout(connect, 500 * retry);
       };
-      ws.onerror = () => { try { ws.close(); } catch { /* noop */ } };
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+        try { ws.close(); } catch (e) { console.warn("WS close falló:", e); }
+      };
     };
     connect();
-    return () => { stop = true; try { ref.current && ref.current.close(); } catch { /* noop */ } };
+    return () => {
+      stop = true;
+      try { ref.current && ref.current.close(); } catch (e) { console.warn("WS cleanup falló:", e); }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

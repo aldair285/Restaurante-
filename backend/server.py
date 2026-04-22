@@ -462,6 +462,166 @@ async def cancel_order(oid: str, user=Depends(require_roles("waiter", "cashier")
     await manager.broadcast("order.cancel", {"id": oid})
     return {"ok": True}
 
+# ================= REPORTS =================
+def _parse_dt(s: str) -> datetime:
+    # Accept ISO strings with or without timezone
+    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+async def _closed_orders_in_range(frm: datetime, to: datetime, projection: dict | None = None):
+    q = {"paid": True, "closed_at": {"$gte": frm.isoformat(), "$lt": to.isoformat()}}
+    proj = projection or {"_id": 0}
+    return await db.orders.find(q, proj).to_list(50000)
+
+@api.get("/reports/kpis")
+async def report_kpis(user=Depends(require_roles("admin"))):
+    now = datetime.now(timezone.utc)
+    today = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    yest = today - timedelta(days=1)
+    week = today - timedelta(days=now.weekday())
+    prev_week = week - timedelta(days=7)
+    month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    prev_month = datetime(now.year - 1, 12, 1, tzinfo=timezone.utc) if now.month == 1 else datetime(now.year, now.month - 1, 1, tzinfo=timezone.utc)
+    year = datetime(now.year, 1, 1, tzinfo=timezone.utc)
+    prev_year = datetime(now.year - 1, 1, 1, tzinfo=timezone.utc)
+    tomorrow = today + timedelta(days=1)
+
+    async def agg(ds, de):
+        docs = await _closed_orders_in_range(ds, de, {"_id": 0, "total": 1})
+        sales = sum(d["total"] for d in docs)
+        count = len(docs)
+        avg = sales / count if count else 0
+        return {"sales": round(sales, 2), "orders": count, "avg_ticket": round(avg, 2)}
+
+    return {
+        "today": await agg(today, tomorrow),
+        "yesterday": await agg(yest, today),
+        "week": await agg(week, tomorrow),
+        "prev_week": await agg(prev_week, week),
+        "month": await agg(month, tomorrow),
+        "prev_month": await agg(prev_month, month),
+        "year": await agg(year, tomorrow),
+        "prev_year": await agg(prev_year, year),
+    }
+
+@api.get("/reports/timeseries")
+async def report_timeseries(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    bucket: str = Query("day"),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    docs = await _closed_orders_in_range(f, t, {"_id": 0, "closed_at": 1, "total": 1})
+    buckets: Dict[str, Dict[str, Any]] = {}
+    for d in docs:
+        dt = datetime.fromisoformat(d["closed_at"])
+        key = dt.strftime("%Y-%m-%d %H:00") if bucket == "hour" else dt.strftime("%Y-%m-%d")
+        b = buckets.setdefault(key, {"date": key, "sales": 0.0, "orders": 0})
+        b["sales"] += d["total"]
+        b["orders"] += 1
+    out = sorted(buckets.values(), key=lambda x: x["date"])
+    for r in out:
+        r["sales"] = round(r["sales"], 2)
+    return out
+
+@api.get("/reports/products")
+async def report_products(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    limit: int = Query(10),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    orders = await _closed_orders_in_range(f, t, {"_id": 0, "items": 1})
+    agg: Dict[str, Dict[str, Any]] = {}
+    for o in orders:
+        for it in o["items"]:
+            pid = it["product_id"]
+            a = agg.setdefault(pid, {"product_id": pid, "name": it["name"], "qty": 0, "revenue": 0.0})
+            a["qty"] += it["qty"]
+            a["revenue"] += it["line_total"]
+    for a in agg.values():
+        a["revenue"] = round(a["revenue"], 2)
+    values = list(agg.values())
+    top = sorted(values, key=lambda x: x["revenue"], reverse=True)[:limit]
+    bottom = sorted(values, key=lambda x: x["revenue"])[:limit]
+
+    # Include catalog items with zero sales in bottom
+    all_prods = await db.products.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(500)
+    zero = [{"product_id": p["id"], "name": p["name"], "qty": 0, "revenue": 0.0} for p in all_prods if p["id"] not in agg]
+    bottom = (zero + bottom)[:limit]
+    return {"top": top, "bottom": bottom, "total_products": len(values)}
+
+@api.get("/reports/hourly")
+async def report_hourly(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    orders = await _closed_orders_in_range(f, t, {"_id": 0, "closed_at": 1, "total": 1})
+    hours = {h: {"hour": h, "sales": 0.0, "orders": 0} for h in range(24)}
+    for o in orders:
+        h = datetime.fromisoformat(o["closed_at"]).hour
+        hours[h]["sales"] += o["total"]
+        hours[h]["orders"] += 1
+    out = list(hours.values())
+    for r in out:
+        r["sales"] = round(r["sales"], 2)
+    return out
+
+@api.get("/reports/weekday")
+async def report_weekday(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    orders = await _closed_orders_in_range(f, t, {"_id": 0, "closed_at": 1, "total": 1})
+    labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    days = {i: {"weekday": i, "label": labels[i], "sales": 0.0, "orders": 0} for i in range(7)}
+    for o in orders:
+        wd = datetime.fromisoformat(o["closed_at"]).weekday()
+        days[wd]["sales"] += o["total"]
+        days[wd]["orders"] += 1
+    out = list(days.values())
+    for r in out:
+        r["sales"] = round(r["sales"], 2)
+    return out
+
+@api.get("/reports/payment-methods")
+async def report_payments(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    orders = await _closed_orders_in_range(f, t, {"_id": 0, "payments": 1})
+    methods: Dict[str, Dict[str, Any]] = {}
+    for o in orders:
+        for p in o.get("payments", []):
+            m = p["method"]
+            a = methods.setdefault(m, {"method": m, "amount": 0.0, "count": 0})
+            a["amount"] += p["amount"]
+            a["count"] += 1
+    for mm in methods.values():
+        mm["amount"] = round(mm["amount"], 2)
+    return list(methods.values())
+
+@api.get("/reports/orders")
+async def report_orders(
+    frm: str = Query(..., alias="from"),
+    to: str = Query(...),
+    limit: int = Query(200),
+    user=Depends(require_roles("admin")),
+):
+    f, t = _parse_dt(frm), _parse_dt(to)
+    q = {"paid": True, "closed_at": {"$gte": f.isoformat(), "$lt": t.isoformat()}}
+    return await db.orders.find(q, {"_id": 0}).sort("closed_at", -1).to_list(limit)
+
 # ================= TICKET =================
 @api.get("/orders/{oid}/ticket", response_class=HTMLResponse)
 async def ticket(oid: str):
@@ -598,6 +758,72 @@ async def seed_data():
     await db.users.create_index("email", unique=True)
     await db.products.create_index("id", unique=True)
     await db.orders.create_index("id", unique=True)
+
+    # Seed historical closed orders for Reports demo (last 30 days)
+    if await db.orders.count_documents({"created_by": "seed"}) == 0:
+        import random
+        prods = await db.products.find({"available": True}, {"_id": 0}).to_list(100)
+        methods = ["efectivo", "transferencia", "otro"]
+        now = datetime.now(timezone.utc)
+        historical = []
+        for days_ago in range(30, -1, -1):
+            # More orders near lunch/dinner; weekends busier
+            base_day = now - timedelta(days=days_ago)
+            is_weekend = base_day.weekday() >= 5
+            day_orders = random.randint(6, 10) + (4 if is_weekend else 0)
+            for _ in range(day_orders):
+                # Peak hours 12-14 and 19-21
+                hour = random.choices(
+                    list(range(10, 23)),
+                    weights=[1, 2, 6, 8, 5, 2, 2, 3, 5, 8, 7, 3, 1],
+                    k=1,
+                )[0]
+                minute = random.randint(0, 59)
+                closed = base_day.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                n_items = random.randint(1, 4)
+                items = []
+                subtotal = 0.0
+                for __ in range(n_items):
+                    p = random.choice(prods)
+                    qty = random.randint(1, 3)
+                    line = p["price"] * qty
+                    subtotal += line
+                    items.append({
+                        "product_id": p["id"],
+                        "name": p["name"],
+                        "qty": qty,
+                        "unit_price": p["price"],
+                        "modifiers": [],
+                        "notes": "",
+                        "line_total": round(line, 2),
+                    })
+                discount = round(random.choice([0, 0, 0, 2, 5]), 2)
+                total = round(subtotal - discount, 2)
+                method = random.choices(methods, weights=[5, 4, 1])[0]
+                oid = str(uuid.uuid4())
+                historical.append({
+                    "id": oid,
+                    "code": f"#H{closed.strftime('%m%d%H%M')}{random.randint(10,99)}",
+                    "table_number": random.choice([None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+                    "items": items,
+                    "note": "",
+                    "subtotal": round(subtotal, 2),
+                    "discount": discount,
+                    "extra_charge": 0.0,
+                    "total": total,
+                    "status": "ready",
+                    "created_by": "seed",
+                    "created_by_name": "Seed Demo",
+                    "created_at": (closed - timedelta(minutes=15)).isoformat(),
+                    "updated_at": closed.isoformat(),
+                    "payments": [{"method": method, "amount": total, "tip": 0.0}],
+                    "paid": True,
+                    "closed_at": closed.isoformat(),
+                    "closed_by": "Cajero Demo",
+                })
+        if historical:
+            await db.orders.insert_many(historical)
+            logger.info(f"Seeded {len(historical)} historical orders for reports")
 
 @app.on_event("startup")
 async def on_start():

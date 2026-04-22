@@ -68,7 +68,7 @@ export default function POSOrder() {
           modifier_ids: it.modifiers.map(m=>m.id),
           notes: it.notes || "",
         })));
-      } catch { /* noop */ }
+      } catch (err) { console.error("No se pudo cargar pedido existente:", err); }
     }
   };
 
