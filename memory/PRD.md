@@ -30,6 +30,20 @@ Sistema POS para restaurante (sanguchería) que gestione pedidos, cocina y cobro
 - WebSocket /api/ws broadcast: order.new, order.update, order.status, order.closed, order.cancel
 - Seed: 4 usuarios demo + 4 categorías + 6 modificadores + 10 productos de sanguchería
 
+## Implemented (2026-04 · Reports)
+- **Módulo de Estadísticas y Reportes** (Admin → tab "Reportes", default):
+  - KPIs: Hoy / Semana / Mes / Año con comparativa % vs periodo anterior
+  - Filtros rápidos: Hoy, Ayer, Esta semana, Este mes, Este año + rango personalizado
+  - Gráfico de evolución (line chart) ventas + pedidos por día/hora
+  - Top 10 productos por ingresos (bar chart horizontal)
+  - Distribución por método de pago (pie chart)
+  - Horas pico + día de la semana (bar charts)
+  - Menos vendidos (ranking con catálogo completo)
+  - Detalle expandible de pedidos en el rango
+  - Auto-refresh cada 60 s
+- Seed histórico: ~280 pedidos pagados en los últimos 30 días (idempotente, marca `created_by:'seed'`)
+- Backend: `/api/reports/kpis|timeseries|products|hourly|weekday|payment-methods|orders` (admin-only, 16/16 pytest pass)
+
 ## Test Credentials
 Ver `/app/memory/test_credentials.md`
 

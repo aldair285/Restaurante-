@@ -14,7 +14,7 @@ import { Plus, Trash2, Pencil, Package, Tag, Sliders, Users as UsersIcon, BarCha
 import Reports from "@/pages/Reports";
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState("products");
+  const [tab, setTab] = useState("reports");
   return (
     <AppShell title="Administración">
       <div className="h-full overflow-auto">
