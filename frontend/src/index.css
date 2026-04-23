@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 25% 97%;
+  --foreground: 0 0% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 17%;
+  --primary: 14 63% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 26 45% 92%;
+  --secondary-foreground: 0 0% 17%;
+  --muted: 26 25% 94%;
+  --muted-foreground: 0 0% 37%;
+  --accent: 27 78% 52%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 32 22% 88%;
+  --input: 32 22% 88%;
+  --ring: 14 63% 53%;
+  --radius: 0.75rem;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #F9F8F6;
+  color: #2C2C2C;
+  font-family: 'IBM Plex Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, .heading { font-family: 'Work Sans', sans-serif; letter-spacing: -0.01em; }
+
+@layer base {
+  * { @apply border-border; }
+}
+
+/* Grain overlay for depth */
+.grain::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(#00000008 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.6;
+}
+
+/* Button glow on tap */
+.btn-primary { background:#D45D3C; color:#fff; transition: all .18s ease; }
+.btn-primary:hover { background:#C04F30; box-shadow: 0 8px 20px -8px rgba(212,93,60,0.6); }
+.btn-primary:active { transform: scale(0.97); }
+
+.card-surface { background:#fff; border:1px solid #E5E0D8; border-radius: 16px; box-shadow: 0 1px 0 rgba(0,0,0,0.02); }
+
+.product-tile { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.product-tile:hover { transform: translateY(-2px); border-color:#D45D3C; box-shadow: 0 10px 22px -14px rgba(212,93,60,.35); }
+.product-tile:active { transform: scale(0.96); }
+
+/* KDS flash */
+@keyframes flashIn { from { background:#FFE5D0 } to { background:#fff } }
+.flash-new { animation: flashIn 1.2s ease-out; }
+
+/* Stagger fade */
+@keyframes fadeUp { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+.fade-up { animation: fadeUp .28s ease-out both; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background:#E5E0D8; border-radius:10px; }
+::-webkit-scrollbar-thumb:hover { background:#D4CBBE; }
+
+/* Print */
+@media print { .noprint { display:none !important; } }

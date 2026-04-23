@@ -1,0 +1,159 @@
+{
+  "theme": "light",
+  "archetype": "Organic & Earthy",
+  "domain": "Restaurant POS (Sanguchería)",
+  "color_palette": {
+    "background": "#F9F8F6",
+    "surface": "#FFFFFF",
+    "primary": {
+      "DEFAULT": "#D45D3C",
+      "hover": "#C04F30",
+      "foreground": "#FFFFFF"
+    },
+    "secondary": {
+      "DEFAULT": "#F3E8E0",
+      "hover": "#E8D8CC",
+      "foreground": "#2C2C2C"
+    },
+    "accent": {
+      "DEFAULT": "#E67E22",
+      "hover": "#D35400",
+      "foreground": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#2C2C2C",
+      "secondary": "#5E5E5E",
+      "muted": "#8A8A8A"
+    },
+    "border": "#E5E0D8",
+    "kds_status": {
+      "pending": {
+        "bg": "#FFF3CD",
+        "text": "#856404",
+        "border": "#FFEEBA"
+      },
+      "preparing": {
+        "bg": "#FFE5D0",
+        "text": "#C85A17",
+        "border": "#FFD1B0"
+      },
+      "ready": {
+        "bg": "#D4EDDA",
+        "text": "#155724",
+        "border": "#C3E6CB"
+      }
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "'Work Sans', sans-serif",
+      "body": "'IBM Plex Sans', sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-4xl tracking-tight font-bold",
+      "h2": "text-2xl tracking-tight font-semibold",
+      "h3": "text-xl font-semibold",
+      "h4": "text-lg font-medium",
+      "body": "text-base font-normal",
+      "small": "text-sm font-medium",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "layout": {
+    "spacing_scale": "generous",
+    "patterns": {
+      "pos_dashboard": "grid grid-cols-1 md:grid-cols-12 gap-6 h-screen overflow-hidden bg-[#F9F8F6] p-4",
+      "pos_sidebar": "md:col-span-2 flex flex-col gap-4 overflow-y-auto h-full",
+      "pos_main_grid": "md:col-span-7 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto h-full content-start",
+      "pos_ticket": "md:col-span-3 bg-white rounded-2xl shadow-sm border border-[#E5E0D8] flex flex-col h-full overflow-hidden",
+      "kds_board": "grid grid-cols-1 md:grid-cols-3 gap-6 h-full p-6",
+      "kds_column": "flex flex-col gap-4 bg-white/50 rounded-2xl p-4 border border-[#E5E0D8]"
+    },
+    "surfaces": {
+      "card": "bg-white rounded-xl shadow-sm border border-[#E5E0D8] transition-transform hover:-translate-y-1 hover:shadow-md",
+      "touch_target": "min-h-[64px] min-w-[64px] rounded-xl flex items-center justify-center p-4"
+    }
+  },
+  "components": {
+    "button": {
+      "base": "inline-flex items-center justify-center rounded-xl font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "primary": "bg-[#D45D3C] text-white hover:bg-[#C04F30] shadow-sm",
+      "secondary": "bg-[#F3E8E0] text-[#2C2C2C] hover:bg-[#E8D8CC]",
+      "outline": "border-2 border-[#E5E0D8] bg-transparent hover:bg-[#F3E8E0] text-[#2C2C2C]",
+      "sizes": {
+        "sm": "h-10 px-4 text-sm",
+        "md": "h-12 px-6 text-base",
+        "lg": "h-16 px-8 text-lg touch-target"
+      }
+    },
+    "input": {
+      "base": "flex h-12 w-full rounded-xl border-2 border-[#E5E0D8] bg-white px-4 py-2 text-base ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-[#8A8A8A] focus-visible:outline-none focus-visible:border-[#D45D3C] disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "product_card": {
+      "style": "bg-white rounded-2xl p-4 flex flex-col gap-3 items-center text-center cursor-pointer border-2 border-[#E5E0D8] hover:border-[#D45D3C] transition-all active:scale-95 shadow-sm",
+      "image_container": "w-24 h-24 relative flex-shrink-0"
+    },
+    "ticket_item": {
+      "style": "flex items-start justify-between p-3 border-b border-[#E5E0D8] gap-4",
+      "qty_badge": "bg-[#F3E8E0] text-[#2C2C2C] font-bold rounded-lg min-w-[32px] h-[32px] flex items-center justify-center"
+    }
+  },
+  "media": {
+    "images": [
+      {
+        "category": "logo",
+        "url": "https://static.prod-images.emergentagent.com/jobs/e2a7792c-50bd-435b-b799-85085d415e26/images/ceaaba5aa1c7fee10eea6770b9e3cc26479e34d9dbeabe6a449fd982eddc7cca.png",
+        "description": "Sanguchería Logo",
+        "usage": "Top left of sidebar, login screen"
+      },
+      {
+        "category": "product_sandwich_beef",
+        "url": "https://static.prod-images.emergentagent.com/jobs/e2a7792c-50bd-435b-b799-85085d415e26/images/ff2f8d162feb9d4781c630f72cd3483b24b645a081e4f0f640b93e2b5a452e60.png",
+        "description": "Gourmet Beef Sandwich",
+        "usage": "Product thumbnail for beef/steak sandwiches"
+      },
+      {
+        "category": "product_sandwich_chicken",
+        "url": "https://static.prod-images.emergentagent.com/jobs/e2a7792c-50bd-435b-b799-85085d415e26/images/d0da6e2bcbb28482c0834c06295bbd45c4e252473674abc6e4607bb99698f26f.png",
+        "description": "Classic Club Sandwich",
+        "usage": "Product thumbnail for chicken/club sandwiches"
+      },
+      {
+        "category": "product_sides",
+        "url": "https://static.prod-images.emergentagent.com/jobs/e2a7792c-50bd-435b-b799-85085d415e26/images/99971115974fa25948bfea9f498f457bb3c77827c0aaa8b4b2c1ca806b9c9f96.png",
+        "description": "Crispy French Fries",
+        "usage": "Product thumbnail for sides and combos"
+      },
+      {
+        "category": "product_drinks",
+        "url": "https://static.prod-images.emergentagent.com/jobs/e2a7792c-50bd-435b-b799-85085d415e26/images/68eba858e5bb7163176da2f4a33bbea805fa0a6d98a1b5625aec57f83243058b.png",
+        "description": "Craft Sodas",
+        "usage": "Product thumbnail for beverages"
+      }
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use thick, legible icons. Stroke width 2 or 2.5."
+  },
+  "motion": {
+    "hover": "transition-all duration-200 ease-in-out",
+    "active": "active:scale-95",
+    "modal_enter": "animate-in fade-in zoom-in-95 duration-200"
+  },
+  "accessibility": {
+    "focus": "focus-visible:ring-2 focus-visible:ring-[#D45D3C] focus-visible:ring-offset-2",
+    "contrast": "Ensure text over primary buttons is pure white (#FFFFFF)",
+    "touch_targets": "All interactive elements on POS screens MUST be at least 48x48px, preferably 64x64px."
+  },
+  "instructions_to_main_agent": [
+    "Prioritize touch-friendly UI. Use large buttons and generous spacing for the POS and KDS screens.",
+    "Do not use generic blue themes. Stick strictly to the warm Organic & Earthy palette (Terracotta, Sand, Wood tones).",
+    "Use 'Work Sans' for clear, legible headings and 'IBM Plex Sans' for precise data tables and lists.",
+    "For the KDS (Kitchen Display System), use the defined 'kds_status' colors to distinctly highlight pending, preparing, and ready tickets.",
+    "The POS Order Screen should follow a 3-column mental model: Categories (Left), Products (Center, takes most space), Order Ticket (Right).",
+    "Always use the provided media URLs for product thumbnails to ensure a high-quality, cohesive look. Do not use generic placeholders.",
+    "Include 'data-testid' attributes on all interactive elements (buttons, inputs, tickets) for automated testing.",
+    "Ensure WebSockets state updates trigger subtle UI animations (like a flash or highlight) so users notice real-time changes."
+  ]
+}
