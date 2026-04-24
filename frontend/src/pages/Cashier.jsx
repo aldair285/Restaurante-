@@ -93,16 +93,21 @@ export default function Cashier() {
     try {
       if (paidSum + 0.01 < totalToPay) return toast.error("El monto pagado es menor al total");
       if (payMode === "partial") {
-        // Pay only selected items
         const indexes = [...selectedItems];
-        // For multi-payment partial, sum amounts into a single record (backend accepts one payment per call)
         const consolidated = {
           method: payments[0].method,
           amount: paidSum,
           tip: payments.reduce((s, p) => s + Number(p.tip || 0), 0),
         };
-        await api.post(`/orders/${sel.id}/partial-payment`, { item_indexes: indexes, payment: consolidated });
+        const { data: updated } = await api.post(`/orders/${sel.id}/partial-payment`, { item_indexes: indexes, payment: consolidated });
         toast.success(`Pago parcial registrado · ${indexes.length} plato${indexes.length > 1 ? "s" : ""} cobrados`);
+        // Update right-panel state immediately (WS may be delayed)
+        if (updated.paid) {
+          window.open(`${API}/orders/${sel.id}/ticket`, "_blank");
+          setSel(null);
+        } else {
+          setSel(updated);
+        }
       } else {
         await api.post(`/orders/${sel.id}/close`, {
           discount: Number(discount || 0),
