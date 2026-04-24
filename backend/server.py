@@ -136,6 +136,8 @@ class OrderItem(BaseModel):
     modifiers: List[Dict[str, Any]] = []  # [{id,name,price_delta}]
     notes: str = ""
     line_total: float
+    done: bool = False   # KDS marked as prepared
+    paid: bool = False   # Cashier marked as paid (split bill)
 
 class OrderItemIn(BaseModel):
     product_id: str
@@ -222,6 +224,8 @@ async def compute_order_totals(items: List[OrderItemIn]) -> (List[dict], float):
             "modifiers": [{"id": m["id"], "name": m["name"], "price_delta": m["price_delta"]} for m in chosen_mods],
             "notes": it.notes,
             "line_total": round(line, 2),
+            "done": False,
+            "paid": False,
         })
         total += line
     return out_items, round(total, 2)
@@ -462,6 +466,88 @@ async def cancel_order(oid: str, user=Depends(require_roles("waiter", "cashier")
     await manager.broadcast("order.cancel", {"id": oid})
     return {"ok": True}
 
+# ---- Item-level toggle (KDS done / Cashier paid) ----
+class ItemToggleIn(BaseModel):
+    field: Literal["done", "paid"]
+    value: bool
+
+@api.patch("/orders/{oid}/items/{idx}")
+async def toggle_item(oid: str, idx: int, body: ItemToggleIn, user=Depends(get_current_user)):
+    if body.field == "done" and user["role"] not in ("kitchen", "admin"):
+        raise HTTPException(403, "Solo cocina puede marcar preparado")
+    if body.field == "paid" and user["role"] not in ("cashier", "admin"):
+        raise HTTPException(403, "Solo caja puede marcar pagado")
+    o = await db.orders.find_one({"id": oid})
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    if idx < 0 or idx >= len(o["items"]):
+        raise HTTPException(400, "Índice inválido")
+    o["items"][idx][body.field] = body.value
+    update = {"items": o["items"], "updated_at": datetime.now(timezone.utc).isoformat()}
+    # Auto-advance order status
+    if body.field == "done" and all(it.get("done") for it in o["items"]):
+        update["status"] = "ready"
+    elif body.field == "done" and any(it.get("done") for it in o["items"]) and o["status"] == "pending":
+        update["status"] = "preparing"
+    # Auto-close if all items paid
+    if body.field == "paid" and all(it.get("paid") for it in o["items"]) and not o.get("paid"):
+        update["paid"] = True
+        update["closed_at"] = datetime.now(timezone.utc).isoformat()
+        update["closed_by"] = user["name"]
+        # Sum existing partial payments for total
+        total_partial = sum(p.get("amount", 0) for p in o.get("payments", []))
+        update["total"] = round(total_partial, 2)
+    await db.orders.update_one({"id": oid}, {"$set": update})
+    o2 = await db.orders.find_one({"id": oid}, {"_id": 0})
+    await manager.broadcast("order.update", o2)
+    if update.get("paid"):
+        await manager.broadcast("order.closed", o2)
+    return o2
+
+# ---- Partial payment (split bill by items) ----
+class PartialPaymentIn(BaseModel):
+    item_indexes: List[int]
+    payment: PaymentIn
+
+@api.post("/orders/{oid}/partial-payment")
+async def partial_payment(oid: str, body: PartialPaymentIn, user=Depends(require_roles("cashier"))):
+    o = await db.orders.find_one({"id": oid})
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    if o.get("paid"):
+        raise HTTPException(400, "Pedido ya pagado")
+    if not body.item_indexes:
+        raise HTTPException(400, "Debe seleccionar al menos un item")
+    items = o["items"]
+    selected_total = 0.0
+    for idx in body.item_indexes:
+        if idx < 0 or idx >= len(items):
+            raise HTTPException(400, f"Índice inválido: {idx}")
+        if items[idx].get("paid"):
+            raise HTTPException(400, f"Item {idx} ya está pagado")
+        items[idx]["paid"] = True
+        selected_total += items[idx]["line_total"]
+    selected_total = round(selected_total, 2)
+    if body.payment.amount + 0.01 < selected_total:
+        raise HTTPException(400, f"Pago ({body.payment.amount}) menor al total seleccionado ({selected_total})")
+    payments = o.get("payments", []) + [body.payment.model_dump()]
+    update = {
+        "items": items,
+        "payments": payments,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if all(it.get("paid") for it in items):
+        update["paid"] = True
+        update["closed_at"] = datetime.now(timezone.utc).isoformat()
+        update["closed_by"] = user["name"]
+        update["total"] = round(sum(p["amount"] for p in payments), 2)
+    await db.orders.update_one({"id": oid}, {"$set": update})
+    o2 = await db.orders.find_one({"id": oid}, {"_id": 0})
+    await manager.broadcast("order.update", o2)
+    if update.get("paid"):
+        await manager.broadcast("order.closed", o2)
+    return o2
+
 # ================= REPORTS =================
 def _parse_dt(s: str) -> datetime:
     # Accept ISO strings with or without timezone
@@ -689,12 +775,9 @@ async def ws_endpoint(ws: WebSocket):
 
 # ================= STARTUP / SEED =================
 async def seed_data():
-    # Users
+    # Users — only admin is auto-seeded. New users are created by admin from Back Office.
     seed_users = [
         {"email": os.environ["ADMIN_EMAIL"], "password": os.environ["ADMIN_PASSWORD"], "name": "Admin", "role": "admin"},
-        {"email": "mesero@pos.com", "password": "mesero123", "name": "Mesero Demo", "role": "waiter"},
-        {"email": "caja@pos.com", "password": "caja123", "name": "Cajero Demo", "role": "cashier"},
-        {"email": "cocina@pos.com", "password": "cocina123", "name": "Cocina Demo", "role": "kitchen"},
     ]
     for u in seed_users:
         ex = await db.users.find_one({"email": u["email"]})
@@ -707,6 +790,11 @@ async def seed_data():
                 "password_hash": hash_password(u["password"]),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
+        elif not verify_password(u["password"], ex["password_hash"]):
+            await db.users.update_one({"email": u["email"]}, {"$set": {"password_hash": hash_password(u["password"])}})
+
+    # Cleanup: remove old demo users from previous seed (one-time migration)
+    await db.users.delete_many({"email": {"$in": ["admin@pos.com", "mesero@pos.com", "caja@pos.com", "cocina@pos.com"]}})
 
     # Categories
     if await db.categories.count_documents({}) == 0:

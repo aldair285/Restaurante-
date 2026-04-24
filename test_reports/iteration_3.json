@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 3 tested: (a) admin-only login (admin/admin), (b) legacy demo accounts removed, (c) admin creates waiter/cashier/kitchen and they can login, (d) KDS per-item 'done' checkbox with RBAC and auto status advancement (preparing/ready), (e) Cashier partial-payment split-bill flow with RBAC, validation and auto-close when all items paid, (f) full-close flow still works. Backend: 21/21 pytest passed (/app/backend/tests/test_pos_splitflow.py, 23s). Frontend: login page has no quick-* demo buttons, label says 'Usuario', admin login redirects to /admin, KDS per-item checkbox toggles line-through + 'Listo' badge (data-testid='kds-item-check-<oid>-<idx>' verified), Cashier shows per-item checkboxes (data-testid='cashier-item-check-<idx>'), selecting items shows 'X plato(s) seleccionado(s)' with selected-subtotal, 'Cobrar seleccionados' opens dialog, confirm calls POST /partial-payment successfully and backend marks items paid + broadcasts; order card in left list updates to '2/3 PENDIENTES' + 'PAGO PARCIAL' badge + reduced remaining total.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Cashier.jsx - right panel after partial payment",
+        "issue": "After a successful partial-payment, the right-hand detail panel shows STALE data (selected order's items still show all 3 as pending, total S/57) while the left list card correctly updates to '2/3 PENDIENTES · S/39 · PAGO PARCIAL'. The stale panel only refreshes if a WebSocket order.update reaches the client (sel?.id === payload.id → setSel(payload)). In `confirmPay()` the partial-branch calls `load()` (refreshes orders list) but never calls `setSel(updatedOrder)` with the response from api.post('/partial-payment'). Fix: const {data} = await api.post(...); setSel(data); and/or setSel(data.paid ? null : data). Visible in screenshot: 'Items in Ya cobrados: 0, Remaining pending items: 3' after a confirmed partial pay.",
+        "selector": "[data-testid='cashier-paid-items'] / [data-testid='cashier-pending-items']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "WebSocket",
+        "issue": "Browser console shows 'WebSocket connection to wss://.../api/ws failed: WebSocket is closed before the connection is established' and 'WS error: Event' on every page that mounts useOrdersWS. ws.js has a retry loop so eventually reconnects, but real-time order.update/order.closed events intermittently don't reach clients, which worsens the Cashier stale-sel bug above. Worth verifying the production ingress actually proxies wss upgrades to FastAPI.",
+        "affected_selectors": ["n/a"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pos_splitflow.py",
+    "/app/test_reports/pytest/splitflow_results.xml"
+  ],
+  "action_items": [
+    "Cashier.jsx confirmPay(): after partial-payment succeeds, update `sel` state with the response payload (setSel(resp.data)) so the right panel immediately moves paid items into 'Ya cobrados' and rebuilds pending/selected sets; clear selectedItems after. Currently relies exclusively on WS which is intermittent.",
+    "Investigate WebSocket ingress: wss://.../api/ws fails on initial connect in browser. FastAPI endpoint itself works (backend route /api/ws is defined and manager.broadcast fires), so it's likely an ingress/proxy upgrade issue. Reconnect logic masks it partially but causes UX bugs (stale panels, missed toasts)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~933 lines — still above the 700-line guideline from iteration 2; auth/users/orders/reports should be split into routers/*.py.",
+    "Legacy cleanup in seed_data() uses db.users.delete_many by hard-coded email list — fine one-time but should be behind a migration flag or removed after a release.",
+    "partial_payment endpoint mutates `items` list before validating amount: if payment.amount < selected_total it raises but the in-memory items already have paid=true set; not persisted because update_one runs after raise — safe. Still, reordering validation BEFORE mutation is cleaner.",
+    "toggle_item 'paid' path uses sum of existing partial payments for total, but partial-payment path sums all payments. Inconsistency is minor (toggle_item rarely used for paid since UI uses partial-payment), but the two auto-close paths should share helper.",
+    "Cashier.jsx useEffect on [discount,extra,payMode,selectedItems] re-syncs payments[0].amount only when payments.length===1; acceptable but the dep-warning is silenced. Works as intended.",
+    "No rate-limit / brute-force lockout on /auth/login (playbook requirement) — admin/admin is a very weak default; should enforce password change on first login or lockout after 5 fails as noted in playbook_testing_instructions."
+  ],
+  "updated_files": ["/app/backend/tests/test_pos_splitflow.py", "/app/test_reports/iteration_3.json"],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "~90% (1 stale-UI bug after partial pay)"},
+  "test_credentials": "admin / admin (only seeded). Legacy demo users (admin@pos.com, mesero@pos.com, caja@pos.com, cocina@pos.com) are correctly removed — login returns 401. Role users must be created by admin via POST /api/users.",
+  "seed_data_creation": "Test run created 3 role users (ui_waiter_<rand>@pos.test, ui_cashier_*, ui_kitchen_*) + 1 order (#051523 Mesa 7) and several TEST users inside pytest. Some pytest users are cleaned up; some UI-test users remain (email prefix 'ui_' or 'test_'). Main agent may want to add an admin endpoint to purge test-prefixed users.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite: /app/backend/tests/test_pos_splitflow.py (21 tests, needs REACT_APP_BACKEND_URL env). Older suites /app/backend/tests/test_pos_flow.py and test_reports.py likely still reference removed demo emails (admin@pos.com etc.) and will fail — iteration 2 context noted those emails as working, but after this change they're gone. Those two files need rewriting to create users via admin token. For any future UI test, remember: no quick-* buttons on /login, must login as admin then create role users via POST /api/users before testing waiter/cashier/kitchen flows.",
+  "rca of the issue": "Cashier right-panel stale data after partial payment: root cause is in /app/frontend/src/pages/Cashier.jsx confirmPay() — when payMode==='partial', the code does `await api.post('/partial-payment', ...)` but discards the response and calls only `load()` which refreshes `orders`, not `sel`. Because WebSocket is unreliable in this env (wss connect failures logged), the setSel(e.payload) path in useOrdersWS isn't guaranteed to fire. Reproduction: login as cashier, select order, check one item, click Cobrar seleccionados → Confirmar. Left card updates but right panel retains all items as pending until user clicks the order again. Mitigation: in confirmPay() partial branch, destructure {data} = await api.post(...) and call setSel(data) (or setSel(null) if data.paid is true). Also clear selectedItems afterward."
+}

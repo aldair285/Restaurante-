@@ -7,13 +7,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Utensils } from "lucide-react";
 
-const QUICK = [
-  { label: "Admin", email: "admin@pos.com", password: "admin123" },
-  { label: "Mesero", email: "mesero@pos.com", password: "mesero123" },
-  { label: "Caja", email: "caja@pos.com", password: "caja123" },
-  { label: "Cocina", email: "cocina@pos.com", password: "cocina123" },
-];
-
 const HOMES = { admin: "/admin", waiter: "/pos", cashier: "/cashier", kitchen: "/kds" };
 
 export default function Login() {
@@ -23,15 +16,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e, creds) => {
-    e && e.preventDefault();
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Ingresa usuario y contraseña");
+      return;
+    }
     setBusy(true);
     try {
-      const u = await login(creds?.email || email, creds?.password || password);
+      const u = await login(email.trim(), password);
       toast.success(`Bienvenido, ${u.name}`);
       nav(HOMES[u.role] || "/pos");
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Error al iniciar sesión");
+      toast.error(err?.response?.data?.detail || "Credenciales inválidas");
     } finally { setBusy(false); }
   };
 
@@ -56,38 +53,47 @@ export default function Login() {
       <div className="flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
           <h2 className="heading text-3xl font-bold mb-1">Iniciar sesión</h2>
-          <p className="text-[#5E5E5E] mb-8">Ingresa a tu panel de trabajo</p>
+          <p className="text-[#5E5E5E] mb-8">Ingresa con tu cuenta para acceder al sistema</p>
 
-          <form onSubmit={submit} className="space-y-4" data-testid="login-form">
+          <form onSubmit={submit} className="space-y-4" data-testid="login-form" autoComplete="off">
             <div>
-              <Label>Email</Label>
-              <Input data-testid="login-email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@pos.com" className="h-12 mt-1 rounded-xl border-2" />
+              <Label htmlFor="login-user">Usuario</Label>
+              <Input
+                id="login-user"
+                data-testid="login-email"
+                value={email}
+                onChange={e=>setEmail(e.target.value)}
+                placeholder="usuario"
+                className="h-12 mt-1 rounded-xl border-2"
+                autoComplete="username"
+              />
             </div>
             <div>
-              <Label>Contraseña</Label>
-              <Input data-testid="login-password" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" className="h-12 mt-1 rounded-xl border-2" />
+              <Label htmlFor="login-pwd">Contraseña</Label>
+              <Input
+                id="login-pwd"
+                data-testid="login-password"
+                type="password"
+                value={password}
+                onChange={e=>setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="h-12 mt-1 rounded-xl border-2"
+                autoComplete="current-password"
+              />
             </div>
-            <Button data-testid="login-submit" disabled={busy} type="submit" className="h-12 w-full rounded-xl text-base bg-[#D45D3C] hover:bg-[#C04F30]">
+            <Button
+              data-testid="login-submit"
+              disabled={busy}
+              type="submit"
+              className="h-12 w-full rounded-xl text-base bg-[#D45D3C] hover:bg-[#C04F30]"
+            >
               {busy ? "Ingresando..." : "Ingresar"}
             </Button>
           </form>
 
-          <div className="mt-8">
-            <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold mb-3">Acceso rápido · Demo</div>
-            <div className="grid grid-cols-2 gap-2">
-              {QUICK.map(q => (
-                <button
-                  key={q.label}
-                  onClick={(e) => submit(e, q)}
-                  data-testid={`quick-${q.label.toLowerCase()}`}
-                  className="text-left border-2 border-[#E5E0D8] hover:border-[#D45D3C] rounded-xl p-3 transition-all active:scale-95"
-                >
-                  <div className="font-semibold">{q.label}</div>
-                  <div className="text-xs text-[#8A8A8A]">{q.email}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="mt-8 text-xs text-[#8A8A8A] text-center">
+            Solo el administrador puede crear nuevas cuentas desde el Back Office.
+          </p>
         </div>
       </div>
     </div>

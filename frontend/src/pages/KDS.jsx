@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import AppShell from "@/components/AppShell";
 import { useOrdersWS } from "@/lib/ws";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Clock, ChefHat, CircleCheck } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +47,14 @@ export default function KDS() {
     await api.patch(`/orders/${id}/status?status=${status}`);
   };
 
+  const toggleItemDone = async (oid, idx, value) => {
+    try {
+      await api.patch(`/orders/${oid}/items/${idx}`, { field: "done", value });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "No se pudo actualizar el plato");
+    }
+  };
+
   return (
     <AppShell title="Cocina (KDS)">
       <div className="h-full overflow-hidden grid grid-cols-1 md:grid-cols-3 gap-4 p-4" data-testid="kds-board">
@@ -73,13 +82,29 @@ export default function KDS() {
                     <div className={`text-sm font-bold ${col.text}`}>{elapsed(o.created_at)}</div>
                   </div>
                   <div className="space-y-2 my-3">
-                    {o.items.map((it, i) => (
-                      <div key={`${it.product_id}-${i}`} className="text-sm">
-                        <div className="font-semibold">{it.qty}x {it.name}</div>
-                        {it.modifiers.map((m,j)=>(<div key={`${m.id}-${j}`} className="text-xs opacity-80 ml-4">+ {m.name}</div>))}
-                        {it.notes && <div className="text-xs italic opacity-80 ml-4">"{it.notes}"</div>}
-                      </div>
-                    ))}
+                    {o.items.map((it, i) => {
+                      const done = !!it.done;
+                      return (
+                        <label
+                          key={`${it.product_id}-${i}`}
+                          className={`flex items-start gap-3 p-2 -mx-1 rounded-lg cursor-pointer transition-colors hover:bg-white/60 ${done ? "opacity-60" : ""}`}
+                          data-testid={`kds-item-${o.id}-${i}`}
+                        >
+                          <Checkbox
+                            checked={done}
+                            onCheckedChange={(v) => toggleItemDone(o.id, i, !!v)}
+                            className="mt-0.5"
+                            data-testid={`kds-item-check-${o.id}-${i}`}
+                          />
+                          <div className={`flex-1 text-sm ${done ? "line-through" : ""}`}>
+                            <div className="font-semibold">{it.qty}x {it.name}</div>
+                            {it.modifiers.map((m,j)=>(<div key={`${m.id}-${j}`} className="text-xs opacity-80 ml-1">+ {m.name}</div>))}
+                            {it.notes && <div className="text-xs italic opacity-80 ml-1">"{it.notes}"</div>}
+                          </div>
+                          {done && <span className="text-[10px] uppercase tracking-wider bg-[#D4EDDA] text-[#155724] px-2 py-0.5 rounded-full font-bold self-start">Listo</span>}
+                        </label>
+                      );
+                    })}
                   </div>
                   {o.note && <div className="text-xs italic mb-2 opacity-80">Nota: {o.note}</div>}
                   <div className="flex gap-2">
