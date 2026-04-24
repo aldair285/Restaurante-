@@ -37,12 +37,12 @@ export default function POSOrder() {
     if (p.modifier_ids && p.modifier_ids.length) {
       setModDlg({ product: p, qty: 1, modifier_ids: [], notes: "" });
     } else {
-      setCart(prev => [...prev, { product: p, qty: 1, modifier_ids: [], notes: "" }]);
+      setCart(prev => [...prev, { uid: crypto.randomUUID(), product: p, qty: 1, modifier_ids: [], notes: "" }]);
     }
   };
 
   const confirmModDlg = () => {
-    setCart(prev => [...prev, { product: modDlg.product, qty: modDlg.qty, modifier_ids: modDlg.modifier_ids, notes: modDlg.notes }]);
+    setCart(prev => [...prev, { uid: crypto.randomUUID(), product: modDlg.product, qty: modDlg.qty, modifier_ids: modDlg.modifier_ids, notes: modDlg.notes }]);
     setModDlg(null);
   };
 
@@ -63,6 +63,7 @@ export default function POSOrder() {
         setOrderId(o.id);
         setNote(o.note || "");
         setCart(o.items.map(it => ({
+          uid: crypto.randomUUID(),
           product: products.find(p=>p.id===it.product_id) || { id: it.product_id, name: it.name, price: it.unit_price, modifier_ids: [] },
           qty: it.qty,
           modifier_ids: it.modifiers.map(m=>m.id),
@@ -157,7 +158,7 @@ export default function POSOrder() {
           <div className="flex-1 overflow-y-auto p-3" data-testid="order-cart">
             {cart.length === 0 && <div className="text-center text-[#8A8A8A] py-10 text-sm">Selecciona productos</div>}
             {cart.map((c,i) => (
-              <div key={i} className="flex gap-3 py-3 border-b border-[#E5E0D8]">
+              <div key={c.uid} className="flex gap-3 py-3 border-b border-[#E5E0D8]">
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm truncate">{c.product.name}</div>
                   {c.modifier_ids.map(mid => <div key={mid} className="text-xs text-[#8A8A8A]">+ {modMap[mid]?.name}</div>)}

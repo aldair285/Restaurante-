@@ -40,7 +40,7 @@ export default function Cashier() {
   const open = (o) => {
     setSel(o);
     setDiscount(0); setExtra(0);
-    setPayments([{ method:"efectivo", amount: o.subtotal, tip:0 }]);
+    setPayments([{ uid: crypto.randomUUID(), method:"efectivo", amount: o.subtotal, tip:0 }]);
   };
 
   const total = sel ? Math.max(0, (sel.subtotal - Number(discount||0) + Number(extra||0))) : 0;
@@ -53,7 +53,7 @@ export default function Cashier() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discount, extra]);
 
-  const addPay = () => setPayments(p => [...p, { method:"efectivo", amount: remaining, tip:0 }]);
+  const addPay = () => setPayments(p => [...p, { uid: crypto.randomUUID(), method:"efectivo", amount: remaining, tip:0 }]);
   const delPay = (i) => setPayments(p => p.filter((_,x)=>x!==i));
   const upd = (i, k, v) => setPayments(p => p.map((x,xi)=> xi===i?{...x,[k]:v}:x));
 
@@ -124,10 +124,10 @@ export default function Cashier() {
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-2 mb-4">
                   {sel.items.map((it, i) => (
-                    <div key={i} className="flex justify-between py-2 border-b border-[#E5E0D8]">
+                    <div key={`${it.product_id}-${i}`} className="flex justify-between py-2 border-b border-[#E5E0D8]">
                       <div>
                         <div className="font-semibold">{it.qty}x {it.name}</div>
-                        {it.modifiers.map((m,j)=>(<div key={j} className="text-xs text-[#8A8A8A] ml-3">+ {m.name}{m.price_delta?` (S/ ${m.price_delta.toFixed(2)})`:""}</div>))}
+                        {it.modifiers.map((m,j)=>(<div key={`${m.id}-${j}`} className="text-xs text-[#8A8A8A] ml-3">+ {m.name}{m.price_delta?` (S/ ${m.price_delta.toFixed(2)})`:""}</div>))}
                         {it.notes && <div className="text-xs italic text-[#8A8A8A] ml-3">"{it.notes}"</div>}
                       </div>
                       <div className="font-semibold text-[#2C2C2C]">S/ {it.line_total.toFixed(2)}</div>
@@ -172,7 +172,7 @@ export default function Cashier() {
           <DialogHeader><DialogTitle>Registrar pago · Total S/ {total.toFixed(2)}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {payments.map((p, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
+              <div key={p.uid} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-5">
                   <Label>Método</Label>
                   <Select value={p.method} onValueChange={v=>upd(i,"method",v)}>

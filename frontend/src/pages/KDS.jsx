@@ -74,9 +74,9 @@ export default function KDS() {
                   </div>
                   <div className="space-y-2 my-3">
                     {o.items.map((it, i) => (
-                      <div key={i} className="text-sm">
+                      <div key={`${it.product_id}-${i}`} className="text-sm">
                         <div className="font-semibold">{it.qty}x {it.name}</div>
-                        {it.modifiers.map((m,j)=>(<div key={j} className="text-xs opacity-80 ml-4">+ {m.name}</div>))}
+                        {it.modifiers.map((m,j)=>(<div key={`${m.id}-${j}`} className="text-xs opacity-80 ml-4">+ {m.name}</div>))}
                         {it.notes && <div className="text-xs italic opacity-80 ml-4">"{it.notes}"</div>}
                       </div>
                     ))}
