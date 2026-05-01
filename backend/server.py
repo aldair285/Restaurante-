@@ -21,7 +21,18 @@ from pydantic import BaseModel, Field
 
 # -------- Setup --------
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+import ssl
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+client = AsyncIOMotorClient(
+    mongo_url,
+    tls=True,
+    tlsAllowInvalidCertificates=True,
+    tlsAllowInvalidHostnames=True,
+    serverSelectionTimeoutMS=30000,
+    connectTimeoutMS=30000,
+)
 db = client[os.environ['DB_NAME']]
 
 app = FastAPI()
