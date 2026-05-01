@@ -27,9 +27,9 @@ client = AsyncIOMotorClient(
     tls=True,
     tlsAllowInvalidCertificates=True,
     serverSelectionTimeoutMS=30000,
+    
     connectTimeoutMS=30000,
 )
-
 db = client[os.environ['DB_NAME']]
 app = FastAPI()
 api = APIRouter(prefix="/api")
