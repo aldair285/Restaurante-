@@ -148,6 +148,7 @@ class OrderItemIn(BaseModel):
     qty: int
     modifier_ids: List[str] = []
     notes: str = ""
+    added: bool = False  # True = item añadido a pedido ya enviado a cocina
 
 class OrderCreate(BaseModel):
     table_number: Optional[int] = None
@@ -230,6 +231,7 @@ async def compute_order_totals(items: List[OrderItemIn]) -> (List[dict], float):
             "line_total": round(line, 2),
             "done": False,
             "paid": False,
+            "added": it.added,
         })
         total += line
     return out_items, round(total, 2)
