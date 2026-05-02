@@ -24,14 +24,16 @@ export default function AdminDashboard() {
             <p className="text-[#5E5E5E]">Gestiona la carta, modificadores, combos y usuarios. Los cambios se aplican en tiempo real.</p>
           </div>
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="bg-[#F3E8E0] p-1 h-12 rounded-xl flex-wrap">
-              <TabsTrigger value="reports" className="h-10 px-4 rounded-lg data-[state=active]:bg-white" data-testid="tab-reports"><BarChart3 className="h-4 w-4 mr-2"/>Reportes</TabsTrigger>
-              <TabsTrigger value="liquidacion" className="h-10 px-4 rounded-lg data-[state=active]:bg-white"><Wallet className="h-4 w-4 mr-2"/>Liquidación</TabsTrigger>
-              <TabsTrigger value="products" className="h-10 px-4 rounded-lg data-[state=active]:bg-white" data-testid="tab-products"><Package className="h-4 w-4 mr-2"/>Productos</TabsTrigger>
-              <TabsTrigger value="categories" className="h-10 px-4 rounded-lg data-[state=active]:bg-white" data-testid="tab-categories"><Tag className="h-4 w-4 mr-2"/>Categorías</TabsTrigger>
-              <TabsTrigger value="modifiers" className="h-10 px-4 rounded-lg data-[state=active]:bg-white" data-testid="tab-modifiers"><Sliders className="h-4 w-4 mr-2"/>Modificadores</TabsTrigger>
-              <TabsTrigger value="users" className="h-10 px-4 rounded-lg data-[state=active]:bg-white" data-testid="tab-users"><UsersIcon className="h-4 w-4 mr-2"/>Usuarios</TabsTrigger>
+            <div className="overflow-x-auto pb-1">
+            <TabsList className="bg-[#F3E8E0] p-1 h-12 rounded-xl flex w-max min-w-full">
+              <TabsTrigger value="reports" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0" data-testid="tab-reports"><BarChart3 className="h-4 w-4 mr-1.5"/><span className="text-sm">Reportes</span></TabsTrigger>
+              <TabsTrigger value="liquidacion" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0"><Wallet className="h-4 w-4 mr-1.5"/><span className="text-sm">Liquidación</span></TabsTrigger>
+              <TabsTrigger value="products" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0" data-testid="tab-products"><Package className="h-4 w-4 mr-1.5"/><span className="text-sm">Productos</span></TabsTrigger>
+              <TabsTrigger value="categories" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0" data-testid="tab-categories"><Tag className="h-4 w-4 mr-1.5"/><span className="text-sm">Categorías</span></TabsTrigger>
+              <TabsTrigger value="modifiers" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0" data-testid="tab-modifiers"><Sliders className="h-4 w-4 mr-1.5"/><span className="text-sm">Modificadores</span></TabsTrigger>
+              <TabsTrigger value="users" className="h-10 px-3 rounded-lg data-[state=active]:bg-white flex-shrink-0" data-testid="tab-users"><UsersIcon className="h-4 w-4 mr-1.5"/><span className="text-sm">Usuarios</span></TabsTrigger>
             </TabsList>
+            </div>
             <TabsContent value="reports"><Reports/></TabsContent>
             <TabsContent value="liquidacion"><Liquidacion/></TabsContent>
             <TabsContent value="products"><Products/></TabsContent>
