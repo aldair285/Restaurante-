@@ -7,27 +7,51 @@ export function useOrdersWS(handler) {
   useEffect(() => {
     let stop = false;
     let retry = 0;
+    let pingInterval = null;
+
     const connect = () => {
       if (stop) return;
       const ws = new WebSocket(wsUrl());
       ref.current = ws;
-      ws.onmessage = (e) => {
-        try { handler(JSON.parse(e.data)); } catch (err) { console.error("WS payload inválido:", err); }
+
+      ws.onopen = () => {
+        retry = 0;
+        // Send ping every 20 seconds to keep connection alive
+        pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ event: "ping" }));
+          }
+        }, 20000);
       };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.event === "pong") return; // ignore pong
+          handler(data);
+        } catch (err) {
+          console.error("WS payload inválido:", err);
+        }
+      };
+
       ws.onclose = (ev) => {
+        clearInterval(pingInterval);
         if (stop) return;
         retry = Math.min(retry + 1, 6);
         console.warn(`WS cerrado (code=${ev.code}), reintentando en ${500 * retry}ms`);
         setTimeout(connect, 500 * retry);
       };
+
       ws.onerror = (err) => {
         console.error("WS error:", err);
         try { ws.close(); } catch (e) { console.warn("WS close falló:", e); }
       };
     };
+
     connect();
     return () => {
       stop = true;
+      clearInterval(pingInterval);
       try { ref.current && ref.current.close(); } catch (e) { console.warn("WS cleanup falló:", e); }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
