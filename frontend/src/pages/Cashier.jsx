@@ -276,16 +276,16 @@ export default function Cashier() {
                   <span className="heading font-bold">Total restante</span>
                   <span className="heading font-bold text-2xl text-[#D45D3C]" data-testid="cashier-total">S/ {totalFull.toFixed(2)}</span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button onClick={openPartialPay} data-testid="charge-selected-btn"
                     disabled={!selectedItems.size}
                     variant="outline"
-                    className="flex-1 h-12 rounded-xl border-2">
+                    className="w-full h-12 rounded-xl border-2">
                     <Split className="h-4 w-4 mr-2" />Cobrar seleccionados
                   </Button>
                   <Button onClick={openFullPay} data-testid="charge-btn"
                     disabled={pendingItems.length === 0}
-                    className="flex-1 h-12 bg-[#D45D3C] hover:bg-[#C04F30] rounded-xl">
+                    className="w-full h-12 bg-[#D45D3C] hover:bg-[#C04F30] rounded-xl">
                     <Banknote className="h-4 w-4 mr-2" />Cobrar todo
                   </Button>
                 </div>
