@@ -4,9 +4,10 @@ import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Minus, Plus, Send, Trash2, ShoppingBag, CircleCheck } from "lucide-react";
+import { Minus, Plus, Send, Trash2, ShoppingBag, CircleCheck, PlusCircle } from "lucide-react";
 import { useOrdersWS } from "@/lib/ws";
 
 export default function POSOrder() {
@@ -15,11 +16,12 @@ export default function POSOrder() {
   const [mods, setMods] = useState([]);
   const [activeCat, setActiveCat] = useState(null);
   const [tables, setTables] = useState([]);
-  const [table, setTable] = useState(null); // null = para llevar
-  const [cart, setCart] = useState([]); // {product, qty, modifier_ids, notes}
+  const [table, setTable] = useState(null);
+  const [cart, setCart] = useState([]); // {uid, product, qty, modifier_ids, notes, _existing, _added}
   const [orderId, setOrderId] = useState(null);
-  const [modDlg, setModDlg] = useState(null); // {product, qty, modifier_ids, notes}
+  const [modDlg, setModDlg] = useState(null);
   const [note, setNote] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // {idx, name}
 
   const loadAll = async () => {
     const [c, p, m, t] = await Promise.all([api.get("/categories"), api.get("/products"), api.get("/modifiers"), api.get("/tables")]);
@@ -37,24 +39,45 @@ export default function POSOrder() {
     if (p.modifier_ids && p.modifier_ids.length) {
       setModDlg({ product: p, qty: 1, modifier_ids: [], notes: "" });
     } else {
-      setCart(prev => [...prev, { uid: crypto.randomUUID(), product: p, qty: 1, modifier_ids: [], notes: "" }]);
+      setCart(prev => [...prev, { uid: crypto.randomUUID(), product: p, qty: 1, modifier_ids: [], notes: "", _added: !!orderId }]);
     }
   };
 
   const confirmModDlg = () => {
-    setCart(prev => [...prev, { uid: crypto.randomUUID(), product: modDlg.product, qty: modDlg.qty, modifier_ids: modDlg.modifier_ids, notes: modDlg.notes }]);
+    setCart(prev => [...prev, {
+      uid: crypto.randomUUID(),
+      product: modDlg.product,
+      qty: modDlg.qty,
+      modifier_ids: modDlg.modifier_ids,
+      notes: modDlg.notes,
+      _added: !!orderId,
+    }]);
     setModDlg(null);
   };
 
   const updateQty = (idx, d) => setCart(prev => prev.map((c,i)=> i===idx ? {...c, qty: Math.max(1, c.qty+d)} : c));
-  const removeItem = (idx) => setCart(prev => prev.filter((_,i)=>i!==idx));
+
+  const removeItem = (idx) => {
+    const item = cart[idx];
+    if (item._existing) {
+      setDeleteConfirm({ idx, name: item.product.name });
+    } else {
+      setCart(prev => prev.filter((_,i)=>i!==idx));
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm !== null) {
+      setCart(prev => prev.filter((_,i)=>i!==deleteConfirm.idx));
+      setDeleteConfirm(null);
+    }
+  };
 
   const lineTotal = (c) => (c.product.price + c.modifier_ids.reduce((s,mid)=>s + (modMap[mid]?.price_delta||0),0)) * c.qty;
   const total = cart.reduce((s,c)=>s+lineTotal(c),0);
 
   const selectTable = async (n) => {
     setTable(n); setCart([]); setOrderId(null); setNote("");
-    // Load existing open order for this table
     const existing = tables.find(t=>t.number===n && t.order_id);
     if (existing) {
       try {
@@ -68,6 +91,8 @@ export default function POSOrder() {
           qty: it.qty,
           modifier_ids: it.modifiers.map(m=>m.id),
           notes: it.notes || "",
+          _existing: true,
+          _added: false,
         })));
       } catch (err) { console.error("No se pudo cargar pedido existente:", err); }
     }
@@ -75,15 +100,18 @@ export default function POSOrder() {
 
   const send = async () => {
     if (!cart.length) return toast.error("Agrega productos al pedido");
-    const body = {
-      table_number: table,
-      note,
-      items: cart.map(c => ({ product_id: c.product.id, qty: c.qty, modifier_ids: c.modifier_ids, notes: c.notes })),
-    };
+    const items = cart.map(c => ({
+      product_id: c.product.id,
+      qty: c.qty,
+      modifier_ids: c.modifier_ids,
+      notes: c.notes,
+      added: !!c._added,
+    }));
+    const body = { table_number: table, note, items };
     try {
       if (orderId) {
         await api.patch(`/orders/${orderId}`, body);
-        toast.success("Pedido actualizado");
+        toast.success("Pedido actualizado ✓");
       } else {
         const { data } = await api.post("/orders", body);
         setOrderId(data.id);
@@ -97,6 +125,41 @@ export default function POSOrder() {
   const printTicket = () => {
     if (!orderId) return;
     window.open(`${API}/orders/${orderId}/ticket`, "_blank");
+  };
+
+  const existingItems = cart.filter(c => c._existing);
+  const addedItems = cart.filter(c => c._added);
+  const newItems = cart.filter(c => !c._existing && !c._added);
+
+  const renderCartItem = (c) => {
+    const globalIdx = cart.indexOf(c);
+    return (
+      <div key={c.uid} className={`flex gap-3 py-3 border-b border-[#E5E0D8] ${c._added ? "bg-[#F0FFF4] -mx-3 px-3 rounded-lg" : ""}`}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm truncate">{c.product.name}</span>
+            {c._added && (
+              <span className="flex-shrink-0 text-[9px] uppercase tracking-wider bg-[#27AE60] text-white px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <PlusCircle className="h-2.5 w-2.5"/> Añadido
+              </span>
+            )}
+          </div>
+          {c.modifier_ids.map(mid => <div key={mid} className="text-xs text-[#8A8A8A]">+ {modMap[mid]?.name}</div>)}
+          {c.notes && <div className="text-xs italic text-[#8A8A8A]">"{c.notes}"</div>}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="font-bold text-sm text-[#D45D3C]">S/ {lineTotal(c).toFixed(2)}</div>
+          <div className="flex items-center gap-1">
+            <button onClick={()=>updateQty(globalIdx,-1)} className="h-7 w-7 rounded-lg border border-[#E5E0D8] flex items-center justify-center"><Minus className="h-3 w-3"/></button>
+            <span className="w-6 text-center font-bold">{c.qty}</span>
+            <button onClick={()=>updateQty(globalIdx,+1)} className="h-7 w-7 rounded-lg border border-[#E5E0D8] flex items-center justify-center"><Plus className="h-3 w-3"/></button>
+            <button onClick={()=>removeItem(globalIdx)} className="h-7 w-7 rounded-lg border border-red-200 text-red-500 ml-1 flex items-center justify-center">
+              <Trash2 className="h-3 w-3"/>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -157,24 +220,21 @@ export default function POSOrder() {
           </div>
           <div className="flex-1 overflow-y-auto p-3" data-testid="order-cart">
             {cart.length === 0 && <div className="text-center text-[#8A8A8A] py-10 text-sm">Selecciona productos</div>}
-            {cart.map((c,i) => (
-              <div key={c.uid} className="flex gap-3 py-3 border-b border-[#E5E0D8]">
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm truncate">{c.product.name}</div>
-                  {c.modifier_ids.map(mid => <div key={mid} className="text-xs text-[#8A8A8A]">+ {modMap[mid]?.name}</div>)}
-                  {c.notes && <div className="text-xs italic text-[#8A8A8A]">"{c.notes}"</div>}
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <div className="font-bold text-sm text-[#D45D3C]">S/ {lineTotal(c).toFixed(2)}</div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={()=>updateQty(i,-1)} className="h-7 w-7 rounded-lg border border-[#E5E0D8] flex items-center justify-center"><Minus className="h-3 w-3"/></button>
-                    <span className="w-6 text-center font-bold">{c.qty}</span>
-                    <button onClick={()=>updateQty(i,+1)} className="h-7 w-7 rounded-lg border border-[#E5E0D8] flex items-center justify-center"><Plus className="h-3 w-3"/></button>
-                    <button onClick={()=>removeItem(i)} className="h-7 w-7 rounded-lg border border-red-200 text-red-600 ml-1 flex items-center justify-center"><Trash2 className="h-3 w-3"/></button>
-                  </div>
-                </div>
+
+            {existingItems.map(c => renderCartItem(c))}
+
+            {orderId && addedItems.length > 0 && (
+              <div className="flex items-center gap-2 py-2 my-1">
+                <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
+                <span className="text-[10px] text-[#27AE60] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <PlusCircle className="h-3 w-3"/> Nuevos
+                </span>
+                <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
               </div>
-            ))}
+            )}
+
+            {addedItems.map(c => renderCartItem(c))}
+            {newItems.map(c => renderCartItem(c))}
           </div>
           <div className="p-3 border-t border-[#E5E0D8] space-y-2">
             <Input placeholder="Nota del pedido (opcional)" value={note} onChange={e=>setNote(e.target.value)} data-testid="order-note"/>
@@ -183,13 +243,14 @@ export default function POSOrder() {
               <span className="heading font-bold text-2xl text-[#D45D3C]" data-testid="order-total">S/ {total.toFixed(2)}</span>
             </div>
             <Button onClick={send} data-testid="send-order-btn" disabled={!cart.length} className="w-full h-14 text-base bg-[#D45D3C] hover:bg-[#C04F30] rounded-xl">
-              <Send className="h-4 w-4 mr-2"/>{orderId?"Actualizar pedido":"Enviar a cocina"}
+              <Send className="h-4 w-4 mr-2"/>{orderId ? "Actualizar pedido" : "Enviar a cocina"}
             </Button>
             {orderId && <Button onClick={printTicket} variant="outline" className="w-full h-11 rounded-xl">Imprimir ticket</Button>}
           </div>
         </aside>
       </div>
 
+      {/* Dialog modificadores */}
       <Dialog open={!!modDlg} onOpenChange={(v)=>!v && setModDlg(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{modDlg?.product.name}</DialogTitle></DialogHeader>
@@ -227,6 +288,22 @@ export default function POSOrder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmación eliminar item existente */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(v)=>!v && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar del pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteConfirm?.name}</strong> ya fue enviado a cocina. ¿Seguro que deseas eliminarlo del pedido?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
