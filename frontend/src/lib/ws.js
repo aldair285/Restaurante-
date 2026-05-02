@@ -4,6 +4,10 @@ import { wsUrl } from "@/lib/api";
 // Subscribe to POS websocket events. handler receives {event, payload}
 export function useOrdersWS(handler) {
   const ref = useRef(null);
+  const handlerRef = useRef(handler);
+  // Siempre mantener la referencia al handler más reciente (evita stale closures)
+  useEffect(() => { handlerRef.current = handler; });
+
   useEffect(() => {
     let stop = false;
     let retry = 0;
@@ -28,7 +32,7 @@ export function useOrdersWS(handler) {
         try {
           const data = JSON.parse(e.data);
           if (data.event === "pong") return; // ignore pong
-          handler(data);
+          handlerRef.current(data);
         } catch (err) {
           console.error("WS payload inválido:", err);
         }
