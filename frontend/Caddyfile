@@ -1,4 +1,4 @@
-:3000
+:{$PORT}
 
 root * /app/build
 file_server
