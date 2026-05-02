@@ -22,7 +22,7 @@ export default function POSOrder() {
   const [modDlg, setModDlg] = useState(null);
   const [note, setNote] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null); // {idx, name}
-
+// v2
   const loadAll = async () => {
     const [c, p, m, t] = await Promise.all([api.get("/categories"), api.get("/products"), api.get("/modifiers"), api.get("/tables")]);
     setCats(c.data); setProducts(p.data); setMods(m.data); setTables(t.data);
