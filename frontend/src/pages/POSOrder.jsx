@@ -27,6 +27,7 @@ export default function POSOrder() {
     const [c, p, m, t] = await Promise.all([api.get("/categories"), api.get("/products"), api.get("/modifiers"), api.get("/tables")]);
     setCats(c.data); setProducts(p.data); setMods(m.data); setTables(t.data);
     if (!activeCat && c.data[0]) setActiveCat(c.data[0].id);
+    return { products: p.data, tables: t.data };
   };
   useEffect(()=>{ loadAll(); }, []);
 
@@ -76,9 +77,12 @@ export default function POSOrder() {
   const lineTotal = (c) => (c.product.price + c.modifier_ids.reduce((s,mid)=>s + (modMap[mid]?.price_delta||0),0)) * c.qty;
   const total = cart.reduce((s,c)=>s+lineTotal(c),0);
 
-  const selectTable = async (n) => {
+  const selectTable = async (n, overrideData = {}) => {
     setTable(n); setCart([]); setOrderId(null); setNote("");
-    const existing = tables.find(t=>t.number===n && t.order_id);
+    // Usar datos frescos si se pasan (evita bug de timing con estado de React)
+    const prodList = overrideData.products || products;
+    const tableList = overrideData.tables || tables;
+    const existing = tableList.find(t=>t.number===n && t.order_id);
     if (existing) {
       try {
         const o = (await api.get(`/orders/${existing.order_id}`)).data;
@@ -87,7 +91,7 @@ export default function POSOrder() {
         setNote(o.note || "");
         setCart(o.items.map(it => ({
           uid: crypto.randomUUID(),
-          product: products.find(p=>p.id===it.product_id) || { id: it.product_id, name: it.name, price: it.unit_price, modifier_ids: [] },
+          product: prodList.find(p=>p.id===it.product_id) || { id: it.product_id, name: it.name, price: it.unit_price, modifier_ids: [] },
           qty: it.qty,
           modifier_ids: it.modifiers.map(m=>m.id),
           notes: it.notes || "",
