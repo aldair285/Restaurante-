@@ -24,8 +24,8 @@ export default function KDS() {
   const [, tick] = useState(0);
 
   const load = async () => {
-    const { data } = await api.get("/orders?status=pending,preparing,ready");
-    setOrders(data);
+    const { data } = await api.get("/orders?status=pending,preparing,ready&paid=false");
+    setOrders(data.filter(o => !o.paid));
   };
   useEffect(()=>{ load(); const i = setInterval(()=>tick(t=>t+1), 30000); return ()=>clearInterval(i); }, []);
 
