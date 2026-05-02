@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import AppShell from "@/components/AppShell";
 import { useOrdersWS } from "@/lib/ws";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Clock, ChefHat, CircleCheck } from "lucide-react";
+import { Clock, ChefHat, CircleCheck, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const COLS = [
@@ -97,7 +97,14 @@ export default function KDS() {
                             data-testid={`kds-item-check-${o.id}-${i}`}
                           />
                           <div className={`flex-1 text-sm ${done ? "line-through" : ""}`}>
-                            <div className="font-semibold">{it.qty}x {it.name}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">{it.qty}x {it.name}</span>
+                            {it.added && (
+                              <span className="flex-shrink-0 text-[9px] uppercase tracking-wider bg-[#27AE60] text-white px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                <PlusCircle className="h-2.5 w-2.5"/> Añadido
+                              </span>
+                            )}
+                          </div>
                             {it.modifiers.map((m,j)=>(<div key={`${m.id}-${j}`} className="text-xs opacity-80 ml-1">+ {m.name}</div>))}
                             {it.notes && <div className="text-xs italic opacity-80 ml-1">"{it.notes}"</div>}
                           </div>
