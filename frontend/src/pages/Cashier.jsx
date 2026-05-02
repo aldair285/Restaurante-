@@ -117,6 +117,7 @@ export default function Cashier() {
         if (updated.paid) {
           window.open(`${API}/orders/${sel.id}/ticket`, "_blank");
           setSel(null);
+          setMobileView("orders");
         } else {
           setSel(updated);
         }
@@ -129,6 +130,7 @@ export default function Cashier() {
         toast.success("Pago registrado. Pedido cerrado.");
         window.open(`${API}/orders/${sel.id}/ticket`, "_blank");
         setSel(null);
+        setMobileView("orders");
       }
       setPayDlgOpen(false);
       setSelectedItems(new Set());
@@ -142,10 +144,17 @@ export default function Cashier() {
     ready: { bg: "bg-[#D4EDDA]", text: "text-[#155724]", label: "Listo" },
   }[s] || { bg: "bg-[#F3E8E0]", text: "text-[#2C2C2C]", label: s });
 
+  const [mobileView, setMobileView] = useState("orders"); // "orders" | "detail"
+
+  const handleOpen = (o) => {
+    open(o);
+    setMobileView("detail");
+  };
+
   return (
     <AppShell title="Caja">
-      <div className="h-full grid grid-cols-12 gap-4 p-4 overflow-hidden">
-        <section className="col-span-5 card-surface flex flex-col overflow-hidden">
+      <div className="h-full flex flex-col md:grid md:grid-cols-12 gap-4 p-4 overflow-hidden">
+        <section className={`md:col-span-5 card-surface flex flex-col overflow-hidden ${mobileView === "orders" ? "flex" : "hidden md:flex"}`}>
           <div className="p-4 border-b border-[#E5E0D8]">
             <div className="heading font-bold text-lg">Pedidos abiertos</div>
             <div className="text-xs text-[#8A8A8A]">{orders.length} sin cobrar</div>
@@ -156,7 +165,7 @@ export default function Cashier() {
               const pendCount = o.items.filter(it => !it.paid).length;
               const partialPaid = o.items.some(it => it.paid);
               return (
-                <button key={o.id} onClick={() => open(o)} data-testid={`cashier-order-${o.id}`}
+                <button key={o.id} onClick={() => handleOpen(o)} data-testid={`cashier-order-${o.id}`}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${sel?.id === o.id ? "border-[#D45D3C] bg-[#F3E8E0]" : "border-[#E5E0D8] bg-white hover:border-[#D45D3C]"}`}>
                   <div className="flex justify-between items-start">
                     <div>
@@ -176,13 +185,22 @@ export default function Cashier() {
           </div>
         </section>
 
-        <section className="col-span-7 card-surface flex flex-col overflow-hidden">
+        <section className={`md:col-span-7 card-surface flex flex-col overflow-hidden ${mobileView === "detail" ? "flex" : "hidden md:flex"}`}>
           {sel ? (
             <>
               <div className="p-4 border-b border-[#E5E0D8] flex justify-between items-center">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold">{sel.code}</div>
-                  <div className="heading font-bold text-2xl">{sel.table_number ? `Mesa ${sel.table_number}` : "Para llevar"}</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMobileView("orders")}
+                    className="md:hidden h-9 w-9 rounded-xl border border-[#E5E0D8] flex items-center justify-center text-[#5E5E5E] hover:border-[#D45D3C] mr-1"
+                    aria-label="Volver"
+                  >
+                    ‹
+                  </button>
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold">{sel.code}</div>
+                    <div className="heading font-bold text-2xl">{sel.table_number ? `Mesa ${sel.table_number}` : "Para llevar"}</div>
+                  </div>
                 </div>
                 <Button variant="outline" onClick={() => window.open(`${API}/orders/${sel.id}/ticket`, "_blank")} data-testid="print-pre-ticket" className="rounded-xl h-11"><Printer className="h-4 w-4 mr-2" />Pre-cuenta</Button>
               </div>
