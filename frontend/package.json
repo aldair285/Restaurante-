@@ -59,7 +59,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
     "start:prod": "serve -s build -l $PORT",
   },
   "browserslist": {
