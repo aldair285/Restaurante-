@@ -148,13 +148,15 @@ export default function Reports() {
           </div>
         </div>
         <div className="h-10 w-px bg-[#E5E0D8] mx-2 hidden md:block"/>
-        <div>
+        <div className="w-full">
           <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold mb-2">Rango personalizado</div>
-          <div className="flex gap-2 items-center">
-            <Input type="date" value={from} onChange={(e)=>{setPreset("custom"); setFrom(e.target.value);}} data-testid="date-from" className="h-10 w-auto"/>
-            <span className="text-[#8A8A8A]">→</span>
-            <Input type="date" value={to} onChange={(e)=>{setPreset("custom"); setTo(e.target.value);}} data-testid="date-to" className="h-10 w-auto"/>
-            <Button onClick={loadAll} data-testid="apply-range" className="bg-[#2C2C2C] hover:bg-black h-10 rounded-xl">Aplicar</Button>
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+            <div className="flex gap-2 items-center flex-1">
+              <Input type="date" value={from} onChange={(e)=>{setPreset("custom"); setFrom(e.target.value);}} data-testid="date-from" className="h-10 flex-1"/>
+              <span className="text-[#8A8A8A] shrink-0">→</span>
+              <Input type="date" value={to} onChange={(e)=>{setPreset("custom"); setTo(e.target.value);}} data-testid="date-to" className="h-10 flex-1"/>
+            </div>
+            <Button onClick={loadAll} data-testid="apply-range" className="bg-[#2C2C2C] hover:bg-black h-10 rounded-xl w-full sm:w-auto">Aplicar</Button>
           </div>
         </div>
       </div>
