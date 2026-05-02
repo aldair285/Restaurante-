@@ -1,6 +1,6 @@
 {
-  "name": "Sanguchería POS",
-  "short_name": "POS",
+  "name": "Rich-Coffee",
+  "short_name": "Rich-Coffee",
   "description": "Sistema POS en tiempo real para restaurante — pedidos, cocina y caja sincronizados.",
   "start_url": "/",
   "scope": "/",
