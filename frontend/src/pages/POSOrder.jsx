@@ -22,7 +22,7 @@ export default function POSOrder() {
   const [modDlg, setModDlg] = useState(null);
   const [note, setNote] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null); // {idx, name}
-// v2
+
   const loadAll = async () => {
     const [c, p, m, t] = await Promise.all([api.get("/categories"), api.get("/products"), api.get("/modifiers"), api.get("/tables")]);
     setCats(c.data); setProducts(p.data); setMods(m.data); setTables(t.data);
@@ -31,7 +31,22 @@ export default function POSOrder() {
   };
   useEffect(()=>{ loadAll(); }, []);
 
-  useOrdersWS((e)=>{ if (["order.new","order.closed","order.cancel","order.update"].includes(e.event)) api.get("/tables").then(r=>setTables(r.data)); });
+  useOrdersWS((e)=>{
+    if (["order.new","order.closed","order.cancel","order.update"].includes(e.event)) {
+      api.get("/tables").then(r=>setTables(r.data));
+    }
+    // Si el pedido actualmente abierto fue cerrado o cancelado, limpiar pantalla
+    if (e.event === "order.closed" || e.event === "order.cancel") {
+      const closedId = e.payload?.id;
+      setOrderId(prev => {
+        if (prev === closedId) {
+          setCart([]); setTable(null); setNote("");
+          return null;
+        }
+        return prev;
+      });
+    }
+  });
 
   const modMap = useMemo(() => Object.fromEntries(mods.map(m=>[m.id,m])), [mods]);
   const filtered = products.filter(p => p.available && (!activeCat || p.category_id === activeCat));
