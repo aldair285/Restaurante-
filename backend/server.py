@@ -751,7 +751,7 @@ td{{padding:4px 0;vertical-align:top}}
 .totals .t{{font-weight:700;font-size:15px;margin-top:6px}}
 @media print{{body{{margin:0}}.noprint{{display:none}}}}
 </style></head><body>
-<h1>SANGUCHERÍA POS</h1>
+<h1>{os.environ.get('BUSINESS_NAME', 'Rich-Coffee')}</h1>
 <div class='center'>Ticket {o['code']}</div>
 <div class='center'>{datetime.fromisoformat(o['created_at']).strftime('%d/%m/%Y %H:%M')}</div>
 <div class='center'>Mesa: {o['table_number'] or 'Para llevar'}</div>
