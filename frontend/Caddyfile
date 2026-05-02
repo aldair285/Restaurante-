@@ -1,5 +1,5 @@
 :{$PORT}
 
-root * /app/public
+root * /app/build
 file_server
 try_files {path} /index.html
