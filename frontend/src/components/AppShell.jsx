@@ -22,7 +22,7 @@ export default function AppShell({ children, title, right }) {
           <div className="h-9 w-9 rounded-lg bg-[#D45D3C] text-white flex items-center justify-center">
             <LayoutGrid className="h-5 w-5" />
           </div>
-          <div className="heading font-bold text-lg">Sanguchería POS</div>
+          <div className="heading font-bold text-lg">Rich-Coffee</div>
           {title ? <span className="hidden md:inline text-[#8A8A8A] ml-4 text-sm">/ {title}</span> : null}
         </div>
 
