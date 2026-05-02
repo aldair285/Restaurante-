@@ -181,21 +181,140 @@ export default function POSOrder() {
     );
   };
 
+  const [mobileTab, setMobileTab] = React.useState("productos");
+
+  const CartContent = () => (
+    <>
+      <div className="p-4 border-b border-[#E5E0D8] flex items-center justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold">Pedido</div>
+          <div className="heading font-bold text-lg">{table ? `Mesa ${table}` : "Para llevar"}</div>
+        </div>
+        {orderId && <span className="text-[10px] uppercase tracking-wider bg-[#FFF3CD] text-[#856404] px-2 py-1 rounded-full font-bold">Editando</span>}
+      </div>
+      <div className="flex-1 overflow-y-auto p-3" data-testid="order-cart">
+        {cart.length === 0 && <div className="text-center text-[#8A8A8A] py-10 text-sm">Selecciona productos</div>}
+        {existingItems.map(c => renderCartItem(c))}
+        {orderId && addedItems.length > 0 && (
+          <div className="flex items-center gap-2 py-2 my-1">
+            <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
+            <span className="text-[10px] text-[#27AE60] font-bold uppercase tracking-wider flex items-center gap-1">
+              <PlusCircle className="h-3 w-3"/> Nuevos
+            </span>
+            <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
+          </div>
+        )}
+        {addedItems.map(c => renderCartItem(c))}
+        {newItems.map(c => renderCartItem(c))}
+      </div>
+      <div className="p-3 border-t border-[#E5E0D8] space-y-2">
+        <Input placeholder="Nota del pedido (opcional)" value={note} onChange={e=>setNote(e.target.value)} data-testid="order-note"/>
+        <div className="flex justify-between items-baseline">
+          <span className="text-[#5E5E5E]">Total</span>
+          <span className="heading font-bold text-2xl text-[#D45D3C]" data-testid="order-total">S/ {total.toFixed(2)}</span>
+        </div>
+        <Button onClick={send} data-testid="send-order-btn" disabled={!cart.length} className="w-full h-14 text-base bg-[#D45D3C] hover:bg-[#C04F30] rounded-xl">
+          <Send className="h-4 w-4 mr-2"/>{orderId ? "Actualizar pedido" : "Enviar a cocina"}
+        </Button>
+        {orderId && <Button onClick={printTicket} variant="outline" className="w-full h-11 rounded-xl">Imprimir ticket</Button>}
+      </div>
+    </>
+  );
+
   return (
     <AppShell title="Toma de Pedido">
-      <div className="h-full grid grid-cols-12 gap-4 p-4 overflow-hidden">
-        {/* Categories */}
+      {/* ===== MOBILE BOTTOM TABS ===== */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-[#E5E0D8] flex">
+        {[
+          {key:"mesas", label:"Mesas"},
+          {key:"productos", label:"Productos"},
+          {key:"pedido", label: cart.length > 0 ? `Pedido (${cart.length})` : "Pedido"}
+        ].map(tab => (
+          <button key={tab.key} onClick={()=>setMobileTab(tab.key)}
+            className={`flex-1 py-3 text-xs font-bold transition-all ${mobileTab===tab.key?"text-[#D45D3C] border-t-2 border-[#D45D3C]":"text-[#8A8A8A]"}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ===== MOBILE CONTENT ===== */}
+      <div className="md:hidden h-full pb-14 overflow-hidden">
+        {/* Tab Mesas */}
+        {mobileTab==="mesas" && (
+          <div className="p-4 space-y-3 overflow-y-auto h-full">
+            <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold px-1">Categorías</div>
+            {cats.map(c => (
+              <button key={c.id} onClick={()=>{ setActiveCat(c.id); setMobileTab("productos"); }}
+                className={`w-full text-left h-14 rounded-xl px-4 font-semibold transition-all ${activeCat===c.id?"bg-[#D45D3C] text-white shadow-md":"bg-white border border-[#E5E0D8]"}`}>
+                {c.name}
+              </button>
+            ))}
+            <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold px-1 mt-4">Mesas</div>
+            <div className="grid grid-cols-4 gap-2">
+              <button onClick={()=>{ selectTable(null); setMobileTab("productos"); }}
+                className={`h-14 rounded-xl text-xs font-bold flex flex-col items-center justify-center ${table===null?"bg-[#2C2C2C] text-white":"bg-white border border-[#E5E0D8]"}`}>
+                <ShoppingBag className="h-4 w-4 mb-0.5"/>LLEVAR
+              </button>
+              {tables.map(t => (
+                <button key={t.number} onClick={()=>{ selectTable(t.number); setMobileTab("productos"); }}
+                  className={`h-14 rounded-xl font-bold relative ${table===t.number?"bg-[#D45D3C] text-white":"bg-white border border-[#E5E0D8]"}`}>
+                  {t.number}
+                  {t.status==="occupied" && table!==t.number && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[#E67E22]"/>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Productos */}
+        {mobileTab==="productos" && (
+          <div className="p-3 overflow-y-auto h-full">
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+              {cats.map(c => (
+                <button key={c.id} onClick={()=>setActiveCat(c.id)}
+                  className={`flex-shrink-0 h-9 rounded-full px-4 text-sm font-semibold transition-all ${activeCat===c.id?"bg-[#D45D3C] text-white":"bg-white border border-[#E5E0D8]"}`}>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3" data-testid="products-grid">
+              {filtered.map(p => (
+                <button key={p.id} onClick={()=>{ addToCart(p); }}
+                  className="bg-white rounded-2xl p-3 border-2 border-[#E5E0D8] text-left active:scale-95 transition-transform">
+                  <div className="h-24 w-full rounded-xl bg-[#F3E8E0] overflow-hidden mb-2">
+                    {p.image ? <img src={p.image} alt={p.name} className="h-full w-full object-cover"/> : null}
+                  </div>
+                  <div className="font-semibold leading-tight text-sm line-clamp-2">{p.name}</div>
+                  <div className="mt-1 font-bold text-[#D45D3C] text-sm">S/ {p.price.toFixed(2)}</div>
+                </button>
+              ))}
+              {filtered.length===0 && <div className="col-span-2 text-center text-[#8A8A8A] py-12">Sin productos</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Pedido */}
+        {mobileTab==="pedido" && (
+          <div className="h-full flex flex-col overflow-hidden bg-white">
+            <CartContent/>
+          </div>
+        )}
+      </div>
+
+      {/* ===== DESKTOP LAYOUT ===== */}
+      <div className="hidden md:grid h-full grid-cols-12 gap-4 p-4 overflow-hidden">
         <aside className="col-span-2 overflow-y-auto space-y-2">
           <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold mb-2 px-1">Categorías</div>
           {cats.map(c => (
             <button key={c.id} onClick={()=>setActiveCat(c.id)} data-testid={`cat-${c.id}`}
-              className={`w-full text-left h-14 rounded-xl px-4 font-semibold transition-all ${activeCat===c.id ? "bg-[#D45D3C] text-white shadow-md" : "bg-white border border-[#E5E0D8] hover:border-[#D45D3C]"}`}>
+              className={`w-full text-left h-14 rounded-xl px-4 font-semibold transition-all ${activeCat===c.id?"bg-[#D45D3C] text-white shadow-md":"bg-white border border-[#E5E0D8] hover:border-[#D45D3C]"}`}>
               {c.name}
             </button>
           ))}
           <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold mt-6 mb-2 px-1">Mesas</div>
           <div className="grid grid-cols-3 gap-2">
-            <button onClick={()=>selectTable(null)} data-testid="table-takeaway" className={`h-14 rounded-xl text-xs font-bold flex flex-col items-center justify-center ${table===null?"bg-[#2C2C2C] text-white":"bg-white border border-[#E5E0D8]"}`}>
+            <button onClick={()=>selectTable(null)} data-testid="table-takeaway"
+              className={`h-14 rounded-xl text-xs font-bold flex flex-col items-center justify-center ${table===null?"bg-[#2C2C2C] text-white":"bg-white border border-[#E5E0D8]"}`}>
               <ShoppingBag className="h-4 w-4 mb-0.5"/>LLEVAR
             </button>
             {tables.map(t => (
@@ -207,8 +326,6 @@ export default function POSOrder() {
             ))}
           </div>
         </aside>
-
-        {/* Products */}
         <section className="col-span-7 overflow-y-auto">
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 content-start" data-testid="products-grid">
             {filtered.map(p => (
@@ -227,45 +344,8 @@ export default function POSOrder() {
             {filtered.length===0 && <div className="col-span-4 text-center text-[#8A8A8A] py-12">Sin productos en esta categoría</div>}
           </div>
         </section>
-
-        {/* Ticket */}
         <aside className="col-span-3 card-surface flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-[#E5E0D8] flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-[#8A8A8A] font-bold">Pedido</div>
-              <div className="heading font-bold text-lg">{table ? `Mesa ${table}` : "Para llevar"}</div>
-            </div>
-            {orderId && <span className="text-[10px] uppercase tracking-wider bg-[#FFF3CD] text-[#856404] px-2 py-1 rounded-full font-bold">Editando</span>}
-          </div>
-          <div className="flex-1 overflow-y-auto p-3" data-testid="order-cart">
-            {cart.length === 0 && <div className="text-center text-[#8A8A8A] py-10 text-sm">Selecciona productos</div>}
-
-            {existingItems.map(c => renderCartItem(c))}
-
-            {orderId && addedItems.length > 0 && (
-              <div className="flex items-center gap-2 py-2 my-1">
-                <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
-                <span className="text-[10px] text-[#27AE60] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <PlusCircle className="h-3 w-3"/> Nuevos
-                </span>
-                <div className="flex-1 border-t border-dashed border-[#27AE60]"/>
-              </div>
-            )}
-
-            {addedItems.map(c => renderCartItem(c))}
-            {newItems.map(c => renderCartItem(c))}
-          </div>
-          <div className="p-3 border-t border-[#E5E0D8] space-y-2">
-            <Input placeholder="Nota del pedido (opcional)" value={note} onChange={e=>setNote(e.target.value)} data-testid="order-note"/>
-            <div className="flex justify-between items-baseline">
-              <span className="text-[#5E5E5E]">Total</span>
-              <span className="heading font-bold text-2xl text-[#D45D3C]" data-testid="order-total">S/ {total.toFixed(2)}</span>
-            </div>
-            <Button onClick={send} data-testid="send-order-btn" disabled={!cart.length} className="w-full h-14 text-base bg-[#D45D3C] hover:bg-[#C04F30] rounded-xl">
-              <Send className="h-4 w-4 mr-2"/>{orderId ? "Actualizar pedido" : "Enviar a cocina"}
-            </Button>
-            {orderId && <Button onClick={printTicket} variant="outline" className="w-full h-11 rounded-xl">Imprimir ticket</Button>}
-          </div>
+          <CartContent/>
         </aside>
       </div>
 
