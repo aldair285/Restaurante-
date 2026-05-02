@@ -346,7 +346,7 @@ async def list_tables(user=Depends(get_current_user)):
     tables = []
     for i in range(1, 13):
         order = await db.orders.find_one(
-            {"table_number": i, "status": {"$in": ["pending", "preparing", "ready"]}},
+            {"table_number": i, "status": {"$in": ["pending", "preparing", "ready"]}, "paid": False},
             {"_id": 0}
         )
         tables.append({"number": i, "status": "occupied" if order else "free", "order_id": order["id"] if order else None})
@@ -453,6 +453,7 @@ async def close_order(oid: str, body: CloseIn, user=Depends(require_roles("cashi
         "total": total,
         "payments": [p.model_dump() for p in body.payments],
         "paid": True,
+        "status": "closed",
         "closed_at": datetime.now(timezone.utc).isoformat(),
         "closed_by": user["name"],
     }
@@ -498,6 +499,7 @@ async def toggle_item(oid: str, idx: int, body: ItemToggleIn, user=Depends(get_c
     # Auto-close if all items paid
     if body.field == "paid" and all(it.get("paid") for it in o["items"]) and not o.get("paid"):
         update["paid"] = True
+        update["status"] = "closed"
         update["closed_at"] = datetime.now(timezone.utc).isoformat()
         update["closed_by"] = user["name"]
         # Sum existing partial payments for total
@@ -544,6 +546,7 @@ async def partial_payment(oid: str, body: PartialPaymentIn, user=Depends(require
     }
     if all(it.get("paid") for it in items):
         update["paid"] = True
+        update["status"] = "closed"
         update["closed_at"] = datetime.now(timezone.utc).isoformat()
         update["closed_by"] = user["name"]
         update["total"] = round(sum(p["amount"] for p in payments), 2)
