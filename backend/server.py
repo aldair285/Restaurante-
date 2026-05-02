@@ -922,6 +922,70 @@ async def seed_data():
             await db.orders.insert_many(historical)
             logger.info(f"Seeded {len(historical)} historical orders for reports")
 
+
+# ================= SOCIOS / LIQUIDACIÓN =================
+class SocioIn(BaseModel):
+    name: str
+    color: str = "#D45D3C"
+    product_ids: List[str] = []
+
+@api.get("/socios")
+async def list_socios(user=Depends(require_roles("admin"))):
+    return await db.socios.find({}, {"_id": 0}).to_list(100)
+
+@api.post("/socios")
+async def create_socio(body: SocioIn, user=Depends(require_roles("admin"))):
+    s = {"id": str(uuid.uuid4()), "name": body.name, "color": body.color, "product_ids": body.product_ids}
+    await db.socios.insert_one(s)
+    return {k: v for k, v in s.items() if k != "_id"}
+
+@api.patch("/socios/{sid}")
+async def update_socio(sid: str, body: SocioIn, user=Depends(require_roles("admin"))):
+    await db.socios.update_one({"id": sid}, {"$set": {"name": body.name, "color": body.color, "product_ids": body.product_ids}})
+    return await db.socios.find_one({"id": sid}, {"_id": 0})
+
+@api.delete("/socios/{sid}")
+async def delete_socio(sid: str, user=Depends(require_roles("admin"))):
+    await db.socios.delete_one({"id": sid})
+    return {"ok": True}
+
+@api.get("/socios/report")
+async def socios_report(frm: str = Query(...), to: str = Query(...), user=Depends(require_roles("admin"))):
+    frm_dt = _parse_dt(frm)
+    to_dt = _parse_dt(to)
+    orders = await _closed_orders_in_range(frm_dt, to_dt)
+    socios = await db.socios.find({}, {"_id": 0}).to_list(100)
+    products = await db.products.find({}, {"_id": 0}).to_list(1000)
+    prod_map = {p["id"]: p for p in products}
+    
+    result = []
+    for socio in socios:
+        pid_set = set(socio.get("product_ids", []))
+        total = 0.0
+        units = 0
+        breakdown = {}
+        for order in orders:
+            for item in order.get("items", []):
+                if item.get("product_id") in pid_set:
+                    qty = item.get("qty", 1)
+                    line = item.get("line_total", 0)
+                    units += qty
+                    total += line
+                    pid = item["product_id"]
+                    if pid not in breakdown:
+                        breakdown[pid] = {"name": item.get("name", ""), "qty": 0, "total": 0.0}
+                    breakdown[pid]["qty"] += qty
+                    breakdown[pid]["total"] = round(breakdown[pid]["total"] + line, 2)
+        result.append({
+            "id": socio["id"],
+            "name": socio["name"],
+            "color": socio["color"],
+            "total": round(total, 2),
+            "units": units,
+            "breakdown": list(breakdown.values()),
+        })
+    return result
+
 @app.on_event("startup")
 async def on_start():
     await seed_data()
