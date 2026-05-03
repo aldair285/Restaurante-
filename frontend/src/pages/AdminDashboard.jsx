@@ -366,7 +366,7 @@ function Products() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{edit?.id ? "Editar Producto" : "Nuevo Producto"}</DialogTitle></DialogHeader>
           {edit && (
             <div className="space-y-3">
