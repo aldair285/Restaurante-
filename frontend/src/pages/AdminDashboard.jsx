@@ -320,7 +320,7 @@ function Products() {
   useEffect(() => { load(); }, []);
 
   const openNew = () => { setEdit({ name:"", price:0, category_id: cats[0]?.id || "", image:"", available:true, modifier_ids:[], is_combo:false, combo_items:[] }); setOpen(true); };
-  const openEdit = (p) => { setEdit({ ...p }); setOpen(true); };
+  const openEdit = (p) => { setEdit({ ...p, modifier_ids: p.modifier_ids || [], combo_items: p.combo_items || [] }); setOpen(true); };
   const save = async () => {
     try {
       if (!edit.name || !edit.category_id) return toast.error("Nombre y categoría obligatorios");
