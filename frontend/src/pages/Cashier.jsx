@@ -47,7 +47,7 @@ export default function Cashier() {
     setSel(o);
     setDiscount(0); setExtra(0);
     setSelectedItems(new Set());
-    setPayments([{ uid: crypto.randomUUID(), method: "efectivo", amount: o.subtotal, tip: 0 }]);
+    setPayments([{ uid: crypto.randomUUID(), method: "efectivo", amount: 0, tip: 0 }]);
   };
 
   // Items split into pending vs paid
